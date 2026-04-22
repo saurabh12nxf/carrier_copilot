@@ -1,0 +1,33 @@
+# Core FastAPI
+fastapi==0.104.1
+uvicorn==0.24.0
+python-dotenv==1.0.0
+python-multipart==0.0.6
+pydantic==2.5.0
+
+# Database
+pymongo==4.6.0
+motor==3.3.2
+
+# File Processing
+PyPDF2==3.0.1
+python-docx==1.1.0
+
+# RAG System - Compatible versions
+chromadb==0.4.22
+sentence-transformers==2.2.2
+ollama==0.1.6
+
+# LLMs
+google-generativeai==0.8.3
+
+# PyTorch - Compatible versions
+torch==2.0.1
+transformers==4.30.0
+
+# Hugging Face
+huggingface-hub==0.16.4
+
+# Utilities
+httpx==0.25.2
+numpy==1.24.4
