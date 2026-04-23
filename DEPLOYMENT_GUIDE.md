@@ -89,7 +89,33 @@ Frontend will run on: http://localhost:5173
 
 ## ☁️ Deployment Options
 
-### Option 1: Vercel (Frontend) + Railway (Backend)
+### Quick Fix for Render Deployment Issues
+
+If you're getting Python version or pydantic-core build errors on Render:
+
+1. **Ensure these files exist in your repo:**
+   - `backend/runtime.txt` (contains: `python-3.11.7`)
+   - `.python-version` (contains: `3.11.7`)
+   - `render.yaml` (Render configuration)
+
+2. **In Render Dashboard:**
+   - Go to your service settings
+   - Set Python Version: `3.11.7`
+   - Build Command: `pip install --upgrade pip && pip install -r requirements.txt`
+   - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+
+3. **If still failing, try:**
+   ```bash
+   # Update requirements.txt to use compatible versions
+   pip freeze > requirements.txt
+   git add requirements.txt
+   git commit -m "fix: Update dependencies for deployment"
+   git push
+   ```
+
+---
+
+### Option 1: Render (Recommended - Easiest)
 
 #### Frontend on Vercel:
 1. Push code to GitHub
