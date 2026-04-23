@@ -43,10 +43,8 @@ class RAGService:
         """
         print(f"[RAG] Analyzing with JD for role: {target_role}")
         
-        # Try Gemini first
-        if self.llm.gemini_available:
-            try:
-                prompt = f"""You are an expert AI career advisor. Analyze this job description and compare with candidate's skills.
+        # Use multi-LLM to generate analysis
+        prompt = f"""You are an expert AI career advisor. Analyze this job description and compare with candidate's skills.
 
 JOB DESCRIPTION:
 {job_description}
@@ -57,7 +55,6 @@ CANDIDATE'S CURRENT SKILLS:
 TARGET ROLE: {target_role}
 
 Provide comprehensive analysis in STRICT JSON format (no markdown):
-
 {{
   "required_skills": ["skill1", "skill2", ...],
   "matching_skills": ["skill1", "skill2", ...],
@@ -81,14 +78,13 @@ GUIDELINES:
 
 Return ONLY valid JSON."""
 
-                llm_response = self.llm.generate(prompt)
-                if llm_response:
-                    parsed_result = parse_json_response(llm_response)
-                    if parsed_result:
-                        print("[RAG] ✓ Gemini analysis successful")
-                        return parsed_result
-            except Exception as e:
-                print(f"[RAG] Gemini failed: {e}")
+        # Use Multi-LLM (will try Gemini → OpenAI → Groq automatically)
+        llm_response = self.llm.generate(prompt)
+        if llm_response:
+            parsed_result = parse_json_response(llm_response)
+            if parsed_result:
+                print(f"[RAG] ✓ Analysis successful with {self.llm.current_provider}")
+                return parsed_result
         
         # Fallback to rule-based analyzer
         print("[RAG] Using fallback analyzer (no API required)")

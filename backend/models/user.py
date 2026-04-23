@@ -30,3 +30,5 @@ class User(Base):
     resume_completed = Column(Boolean, default=False)
     skill_gap_completed = Column(Boolean, default=False)
     roadmap_completed = Column(Boolean, default=False)
+    progress_data = Column(Text, nullable=True)  # JSON string for daily progress and streaks
+    roadmap_tracking = Column(Text, nullable=True)  # JSON string for adaptive roadmap tracking

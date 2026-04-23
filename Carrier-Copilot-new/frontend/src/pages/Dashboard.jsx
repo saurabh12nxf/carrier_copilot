@@ -6,6 +6,8 @@ import Sidebar from '../components/Sidebar';
 import SkillGap from '../components/SkillGap';
 import ResumeAnalyzer from '../components/ResumeAnalyzer';
 import Roadmap from '../components/Roadmap';
+import AICoach from '../components/AICoach';
+import DailyProgress from '../components/DailyProgress';
 import OnboardingModal from '../components/OnboardingModal';
 
 const Dashboard = ({ darkMode, setDarkMode }) => {
@@ -29,10 +31,15 @@ const Dashboard = ({ darkMode, setDarkMode }) => {
     // Load all user data from backend
     const loadUserData = async () => {
       try {
+        // Clear old localStorage data first
+        localStorage.removeItem('resumeAnalysis');
+        localStorage.removeItem('skillGapAnalysis');
+        localStorage.removeItem('roadmapData');
+        
         const response = await axios.get(`http://localhost:8000/api/auth/user/${email}`);
         const userData = response.data;
         
-        // Save to localStorage for offline access
+        // Save ONLY this user's data to localStorage
         if (userData.resume_analysis) {
           localStorage.setItem('resumeAnalysis', JSON.stringify(userData.resume_analysis));
         }
@@ -101,7 +108,7 @@ const Dashboard = ({ darkMode, setDarkMode }) => {
 
   // Handle tab change with locking logic
   const handleTabChange = (tab) => {
-    if (tab === 'resume') {
+    if (tab === 'resume' || tab === 'ai-coach' || tab === 'progress') {
       setActiveTab(tab);
     } else if (tab === 'skill-gap') {
       if (!progress.resumeCompleted) {
@@ -123,8 +130,15 @@ const Dashboard = ({ darkMode, setDarkMode }) => {
   };
 
   const handleLogout = () => {
+    // Clear ALL user-specific data from localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('user');
+    localStorage.removeItem('resumeAnalysis');
+    localStorage.removeItem('skillGapAnalysis');
+    localStorage.removeItem('roadmapData');
+    localStorage.removeItem('onboardingCompleted');
     navigate('/login');
   };
 
@@ -151,7 +165,9 @@ const Dashboard = ({ darkMode, setDarkMode }) => {
     const components = {
       'resume': <ResumeAnalyzer darkMode={darkMode} userEmail={userEmail} setUserEmail={setUserEmail} />,
       'skill-gap': <SkillGap darkMode={darkMode} userEmail={userEmail} />,
-      'roadmap': <Roadmap darkMode={darkMode} userEmail={userEmail} />
+      'roadmap': <Roadmap darkMode={darkMode} userEmail={userEmail} />,
+      'ai-coach': <AICoach darkMode={darkMode} userEmail={userEmail} />,
+      'progress': <DailyProgress darkMode={darkMode} userEmail={userEmail} />
     };
 
     return (

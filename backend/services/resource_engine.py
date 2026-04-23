@@ -466,6 +466,65 @@ class ResourceEngine:
                 "Share on GitHub"
             ]
         }
+    
+    def get_resources_for_topic(self, topic: str, missing_skills: List[str]) -> Dict:
+        """
+        Get verified resources for a specific topic/week focus
+        
+        Args:
+            topic: The focus topic for the week (e.g., "HTML & CSS Basics")
+            missing_skills: List of missing skills to find relevant resources
+        
+        Returns:
+            Dict with documentation, videos, and practice resources
+        """
+        # Extract main skill from topic
+        topic_lower = topic.lower()
+        
+        # Find matching skill
+        matched_skill = None
+        for skill in missing_skills:
+            if skill.lower() in topic_lower or topic_lower in skill.lower():
+                matched_skill = skill
+                break
+        
+        # If no match, try to extract from topic
+        if not matched_skill:
+            for key in self.OFFICIAL_DOCS.keys():
+                if key in topic_lower:
+                    matched_skill = key
+                    break
+        
+        # Default to first missing skill if still no match
+        if not matched_skill and missing_skills:
+            matched_skill = missing_skills[0]
+        
+        # Get resources for matched skill
+        if matched_skill:
+            normalized = self._normalize_skill(matched_skill)
+            return self.get_resources(normalized, "beginner")
+        
+        # Fallback: generic resources
+        return {
+            "skill": topic,
+            "level": "beginner",
+            "documentation": {
+                "title": f"{topic} Documentation",
+                "url": f"https://www.google.com/search?q={topic.replace(' ', '+')}+documentation",
+                "type": "search"
+            },
+            "youtube": [
+                {
+                    "title": f"{topic} Tutorial",
+                    "search_url": f"https://www.youtube.com/results?search_query={topic.replace(' ', '+')}+tutorial",
+                    "platform": "YouTube"
+                }
+            ],
+            "projects": [],
+            "courses": [],
+            "github_search": f"https://github.com/search?q={topic.replace(' ', '+')}",
+            "practice": []
+        }
 
 
 # Singleton

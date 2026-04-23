@@ -157,3 +157,17 @@ def get_user_analysis_data(db: Session, email: str):
             "roadmap_completed": user.roadmap_completed
         }
     }
+
+def reset_password(db: Session, email: str, new_password: str):
+    """Reset user password"""
+    user = get_user(db, email)
+    if user:
+        user.password_hash = hash_password(new_password)
+        db.commit()
+        return True
+    return False
+
+def check_email_exists(db: Session, email: str) -> bool:
+    """Check if email exists in database"""
+    user = db.query(User).filter(User.email == email).first()
+    return user is not None

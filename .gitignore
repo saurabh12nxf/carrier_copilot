@@ -8,6 +8,7 @@ venv/
 env/
 ENV/
 .env
+*.pyc
 
 # Node
 node_modules/
@@ -16,6 +17,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnp
 .pnp.js
+package-lock.json
 
 # Build
 build/
@@ -32,10 +34,19 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Database
+# Database (CRITICAL - DO NOT PUSH)
 *.db
 *.sqlite
+*.sqlite3
 chroma_db/
+backend/career_copilot.db
+backend/chroma_db/
+
+# Environment Variables (CRITICAL - DO NOT PUSH)
+.env
+backend/.env
+*.env
+!.env.example
 
 # Logs
 *.log
@@ -44,12 +55,14 @@ chroma_db/
 *.tmp
 *.bak
 *~
+*.bat
+*.sh
 
 # Test files
 test_*.py
 *_test.py
+migrate_*.py
 
-# Empty directories
-frontend/node_modules/
-frontend/public/
-frontend/src/
+# Migration scripts (temporary)
+add_column.py
+fix_*.py

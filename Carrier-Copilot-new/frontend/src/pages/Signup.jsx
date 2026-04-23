@@ -30,6 +30,9 @@ const Signup = () => {
     setLoading(true);
 
     try {
+      // Clear any previous user's data BEFORE creating new account
+      localStorage.clear();
+      
       // Create account
       await axios.post('http://localhost:8000/api/auth/signup', {
         name,
@@ -43,7 +46,7 @@ const Signup = () => {
         password
       });
 
-      // Save user data to localStorage
+      // Save NEW user data to localStorage
       localStorage.setItem('token', 'dummy-token');
       localStorage.setItem('userEmail', loginResponse.data.user.email);
       localStorage.setItem('userName', loginResponse.data.user.name);

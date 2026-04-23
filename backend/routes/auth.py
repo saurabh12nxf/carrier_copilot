@@ -6,7 +6,9 @@ from services.auth_service import (
     create_user,
     authenticate_user,
     get_user,
-    mark_onboarding_complete
+    mark_onboarding_complete,
+    reset_password,
+    check_email_exists
 )
 
 router = APIRouter()
@@ -19,6 +21,14 @@ class SignupRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    new_password: str
+    confirm_password: str
 
 @router.post("/signup")
 async def signup(request: SignupRequest, db: Session = Depends(get_db)):
@@ -42,10 +52,15 @@ async def signup(request: SignupRequest, db: Session = Depends(get_db)):
 @router.post("/login")
 async def login(request: LoginRequest, db: Session = Depends(get_db)):
     """Login user"""
+    # First check if email exists
+    if not check_email_exists(db, request.email):
+        raise HTTPException(status_code=404, detail="Email not registered. Please sign up first.")
+    
+    # Try to authenticate
     user = authenticate_user(db, request.email, request.password)
     
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Incorrect password. Try 'Forgot Password' if you don't remember it.")
     
     return {
         "message": "Login successful",
@@ -82,3 +97,42 @@ async def complete_onboarding(email: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     
     return {"message": "Onboarding completed"}
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Check if email exists for password reset"""
+    if not check_email_exists(db, request.email):
+        raise HTTPException(status_code=404, detail="Email not found. Please check your email or sign up.")
+    
+    # In a real app, you'd send an email with reset link
+    # For now, we'll just confirm the email exists
+    return {
+        "message": "Email verified. You can now reset your password.",
+        "email": request.email
+    }
+
+@router.post("/reset-password")
+async def reset_password_endpoint(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Reset user password"""
+    # Validate passwords match
+    if request.new_password != request.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    
+    # Validate password length
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    # Check if email exists
+    if not check_email_exists(db, request.email):
+        raise HTTPException(status_code=404, detail="Email not found")
+    
+    # Reset password
+    success = reset_password(db, request.email, request.new_password)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to reset password")
+    
+    return {
+        "message": "Password reset successful. You can now login with your new password.",
+        "email": request.email
+    }

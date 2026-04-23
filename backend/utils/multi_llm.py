@@ -20,55 +20,42 @@ class MultiLLM:
         """Initialize all available LLM providers"""
         self.providers = []
         self.current_provider = None
+        self.gemini_model = None
+        self.openai_client = None
+        self.groq_client = None
         
-        # Try to initialize Gemini
+        # Try to initialize Gemini (no test call - test on first use)
         try:
             import google.generativeai as genai
             api_key = os.getenv("GEMINI_API_KEY")
-            if api_key:
+            if api_key and len(api_key) > 10:
                 genai.configure(api_key=api_key)
-                self.gemini_model = genai.GenerativeModel('models/gemini-flash-latest')
-                # Test it
-                test = self.gemini_model.generate_content("Hi", generation_config=genai.types.GenerationConfig(max_output_tokens=5))
-                if test:
-                    self.providers.append("gemini")
-                    logger.info("✅ Gemini initialized")
+                # Use gemini-pro which is stable and widely available
+                self.gemini_model = genai.GenerativeModel('gemini-pro')
+                self.providers.append("gemini")
+                logger.info("✅ Gemini configured")
         except Exception as e:
             logger.warning(f"⚠️ Gemini initialization failed: {e}")
         
-        # Try to initialize OpenAI
+        # Try to initialize OpenAI (no test call - test on first use)
         try:
             from openai import OpenAI
             api_key = os.getenv("OPENAI_API_KEY")
-            if api_key:
+            if api_key and len(api_key) > 10:
                 self.openai_client = OpenAI(api_key=api_key)
-                # Test it
-                test = self.openai_client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": "Hi"}],
-                    max_tokens=5
-                )
-                if test:
-                    self.providers.append("openai")
-                    logger.info("✅ OpenAI initialized")
+                self.providers.append("openai")
+                logger.info("✅ OpenAI configured")
         except Exception as e:
             logger.warning(f"⚠️ OpenAI initialization failed: {e}")
         
-        # Try to initialize Groq
+        # Try to initialize Groq (no test call - test on first use)
         try:
             from groq import Groq
             api_key = os.getenv("GROQ_API_KEY")
-            if api_key:
+            if api_key and len(api_key) > 10:
                 self.groq_client = Groq(api_key=api_key)
-                # Test it
-                test = self.groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "user", "content": "Hi"}],
-                    max_tokens=5
-                )
-                if test:
-                    self.providers.append("groq")
-                    logger.info("✅ Groq initialized")
+                self.providers.append("groq")
+                logger.info("✅ Groq configured")
         except Exception as e:
             logger.warning(f"⚠️ Groq initialization failed: {e}")
         
@@ -84,26 +71,35 @@ class MultiLLM:
         """
         for provider in self.providers:
             try:
-                if provider == "gemini":
+                if provider == "gemini" and self.gemini_model:
+                    logger.info(f"🔄 Trying Gemini...")
                     response = self._generate_gemini(prompt, temperature, max_tokens)
                     if response:
-                        logger.info(f"✅ Generated with Gemini")
+                        logger.info(f"✅ Generated with Gemini ({len(response)} chars)")
                         self.current_provider = "gemini"
                         return response
+                    else:
+                        logger.warning("⚠️ Gemini returned empty response")
                 
-                elif provider == "openai":
+                elif provider == "openai" and self.openai_client:
+                    logger.info(f"🔄 Trying OpenAI...")
                     response = self._generate_openai(prompt, temperature, max_tokens)
                     if response:
-                        logger.info(f"✅ Generated with OpenAI")
+                        logger.info(f"✅ Generated with OpenAI ({len(response)} chars)")
                         self.current_provider = "openai"
                         return response
+                    else:
+                        logger.warning("⚠️ OpenAI returned empty response")
                 
-                elif provider == "groq":
+                elif provider == "groq" and self.groq_client:
+                    logger.info(f"🔄 Trying Groq...")
                     response = self._generate_groq(prompt, temperature, max_tokens)
                     if response:
-                        logger.info(f"✅ Generated with Groq")
+                        logger.info(f"✅ Generated with Groq ({len(response)} chars)")
                         self.current_provider = "groq"
                         return response
+                    else:
+                        logger.warning("⚠️ Groq returned empty response")
                 
                 elif provider == "fallback":
                     logger.info("⚠️ All LLMs failed, using rule-based fallback")
@@ -111,7 +107,7 @@ class MultiLLM:
                     return ""  # Empty means use fallback analyzer
                     
             except Exception as e:
-                logger.warning(f"⚠️ {provider} failed: {str(e)[:100]}")
+                logger.warning(f"⚠️ {provider} failed: {str(e)[:200]}")
                 continue
         
         # If all fail, return empty (triggers fallback)
@@ -144,7 +140,7 @@ class MultiLLM:
     def _generate_openai(self, prompt: str, temperature: float, max_tokens: int) -> str:
         """Generate with OpenAI"""
         response = self.openai_client.chat.completions.create(
-            model="gpt-4o-mini",  # Cheaper and faster than GPT-4
+            model="gpt-3.5-turbo",  # Use cheaper model
             messages=[
                 {"role": "system", "content": "You are an expert AI career advisor."},
                 {"role": "user", "content": prompt}

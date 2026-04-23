@@ -3,9 +3,11 @@ import { motion } from 'framer-motion';
 
 const Sidebar = ({ activeTab, setActiveTab, darkMode, progress }) => {
   const tabs = [
-    { id: 'resume', label: 'Resume Analyzer', icon: '📄', badge: 'Start Here', color: 'from-green-500 to-emerald-500', locked: false },
-    { id: 'skill-gap', label: 'Skill Gap Analysis', icon: '📊', color: 'from-blue-500 to-cyan-500', locked: !progress?.resumeCompleted },
-    { id: 'roadmap', label: 'Personalized Roadmap', icon: '🗺️', color: 'from-purple-500 to-pink-500', locked: !progress?.skillGapCompleted }
+    { id: 'progress', label: 'Daily Progress', icon: '📊', badge: 'NEW', color: 'from-green-500 to-emerald-500', locked: false },
+    { id: 'resume', label: 'Resume Analyzer', icon: '📄', badge: 'Start Here', color: 'from-blue-500 to-cyan-500', locked: false },
+    { id: 'skill-gap', label: 'Skill Gap Analysis', icon: '🎯', color: 'from-purple-500 to-pink-500', locked: !progress?.resumeCompleted },
+    { id: 'roadmap', label: 'Personalized Roadmap', icon: '🗺️', color: 'from-orange-500 to-red-500', locked: !progress?.skillGapCompleted },
+    { id: 'ai-coach', label: 'AI Career Coach', icon: '🤖', color: 'from-indigo-500 to-purple-500', locked: false }
   ];
 
   const sidebarVariants = {
@@ -59,9 +61,14 @@ const Sidebar = ({ activeTab, setActiveTab, darkMode, progress }) => {
           variants={itemVariants}
           whileHover={!tab.locked ? { scale: 1.05, x: 10 } : {}}
           whileTap={!tab.locked ? { scale: 0.95 } : {}}
-          onClick={() => setActiveTab(tab.id)}
+          onClick={() => {
+            console.log('Tab clicked:', tab.id);
+            if (!tab.locked) {
+              setActiveTab(tab.id);
+            }
+          }}
           disabled={tab.locked}
-          className={`w-full text-left p-4 rounded-xl transition-all relative overflow-hidden group ${
+          className={`w-full text-left p-4 rounded-xl transition-all relative overflow-hidden group cursor-pointer ${
             tab.locked
               ? darkMode
                 ? 'bg-gray-800/30 text-gray-600 cursor-not-allowed'
@@ -76,7 +83,7 @@ const Sidebar = ({ activeTab, setActiveTab, darkMode, progress }) => {
           {/* Animated Background on Hover */}
           {activeTab !== tab.id && !tab.locked && (
             <motion.div
-              className={`absolute inset-0 bg-gradient-to-r ${tab.color} opacity-0 group-hover:opacity-10 transition-opacity`}
+              className={`absolute inset-0 bg-gradient-to-r ${tab.color} opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none`}
             />
           )}
 
@@ -85,11 +92,11 @@ const Sidebar = ({ activeTab, setActiveTab, darkMode, progress }) => {
               <motion.span
                 animate={activeTab === tab.id ? { rotate: [0, 10, -10, 0] } : {}}
                 transition={{ duration: 0.5 }}
-                className="text-2xl"
+                className="text-2xl pointer-events-none"
               >
                 {tab.locked ? '🔒' : tab.icon}
               </motion.span>
-              <div>
+              <div className="pointer-events-none">
                 <div className="font-semibold">{tab.label}</div>
                 {tab.badge && activeTab !== tab.id && !tab.locked && (
                   <motion.span
@@ -116,7 +123,7 @@ const Sidebar = ({ activeTab, setActiveTab, darkMode, progress }) => {
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="w-2 h-2 bg-white rounded-full"
+                className="w-2 h-2 bg-white rounded-full pointer-events-none"
               />
             )}
           </div>
@@ -131,32 +138,6 @@ const Sidebar = ({ activeTab, setActiveTab, darkMode, progress }) => {
           )}
         </motion.button>
       ))}
-
-      {/* Stats Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className={`mt-8 p-4 rounded-xl ${darkMode ? 'bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/30' : 'bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200'}`}
-      >
-        <h3 className={`font-semibold mb-3 ${darkMode ? 'text-purple-300' : 'text-purple-900'}`}>
-          🎯 Quick Stats
-        </h3>
-        <div className="space-y-2 text-sm">
-          <div className={`flex justify-between ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            <span>RAG Powered</span>
-            <span className="font-semibold text-green-500">✓ Active</span>
-          </div>
-          <div className={`flex justify-between ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            <span>AI Model</span>
-            <span className="font-semibold text-green-500">✓ Gemini</span>
-          </div>
-          <div className={`flex justify-between ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            <span>Vector DB</span>
-            <span className="font-semibold text-green-500">✓ ChromaDB</span>
-          </div>
-        </div>
-      </motion.div>
 
       {/* Help Section */}
       <motion.div

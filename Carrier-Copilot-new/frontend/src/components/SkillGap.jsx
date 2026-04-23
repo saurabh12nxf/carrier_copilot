@@ -217,44 +217,55 @@ const SkillGap = ({ darkMode, userEmail }) => {
         <div className="space-y-6">
           {/* AI Insights */}
           {result.ai_insights && (
-            <div className={`p-6 rounded-xl ${darkMode ? 'bg-gradient-to-r from-purple-900/30 to-pink-900/30 border border-purple-500' : 'bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200'} shadow-lg`}>
-              <h3 className={`text-xl font-bold mb-3 ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>
-                🤖 AI Insights
+            <div className={`p-6 rounded-xl ${darkMode ? 'bg-gray-800 border border-purple-500/50' : 'bg-white border border-purple-200'} shadow-lg`}>
+              <h3 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <span>🤖</span>
+                <span>AI Insights</span>
               </h3>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <p className={`text-sm font-semibold mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    💪 Your Strengths:
+                  <p className={`text-sm font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <span>💪</span>
+                    <span>Your Strengths:</span>
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {result.ai_insights.strengths.map((s, i) => (
-                      <span key={i} className="px-2 py-1 bg-green-500 text-white rounded text-xs">{s}</span>
+                      <span key={i} className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm font-medium shadow-sm">
+                        {s}
+                      </span>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <p className={`text-sm font-semibold mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    🎯 Focus Areas:
+                  <p className={`text-sm font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <span>🎯</span>
+                    <span>Focus Areas:</span>
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {result.ai_insights.focus_areas.map((s, i) => (
-                      <span key={i} className="px-2 py-1 bg-orange-500 text-white rounded text-xs">{s}</span>
+                      <span key={i} className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-medium shadow-sm">
+                        {s}
+                      </span>
                     ))}
                   </div>
                 </div>
               </div>
-              <p className={`mt-3 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                ⏱️ <strong>Estimated Time:</strong> {result.ai_insights.estimated_time}
-              </p>
+              <div className={`mt-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  ⏱️ <strong>Estimated Time:</strong> {result.ai_insights.estimated_time}
+                </p>
+              </div>
               {result.ai_insights.recommendations && result.ai_insights.recommendations.length > 0 && (
                 <div className="mt-4">
-                  <p className={`text-sm font-semibold mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    💡 AI Recommendations:
+                  <p className={`text-sm font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <span>💡</span>
+                    <span>AI Recommendations:</span>
                   </p>
-                  <ul className="list-disc list-inside space-y-1">
+                  <ul className="space-y-2">
                     {result.ai_insights.recommendations.map((rec, i) => (
-                      <li key={i} className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {rec}
+                      <li key={i} className={`flex items-start gap-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <span className="text-primary mt-0.5">•</span>
+                        <span>{rec}</span>
                       </li>
                     ))}
                   </ul>

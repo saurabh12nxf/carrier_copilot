@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import skill_gap, resume, roadmap, enhanced_resume, analyze_role, admin, auth
+from routes import skill_gap, resume, roadmap, enhanced_resume, analyze_role, admin, auth, ai_coach, progress, project_details, roadmap_tracking
 from database.db import init_db
 
 app = FastAPI(title="GenAI Career Copilot API - RAG Powered")
@@ -22,6 +22,10 @@ async def startup_event():
 
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(ai_coach.router, prefix="/api/coach", tags=["AI Career Coach"])
+app.include_router(progress.router, prefix="/api/progress", tags=["Progress Tracking"])
+app.include_router(roadmap_tracking.router, prefix="/api", tags=["Roadmap Tracking"])
+app.include_router(project_details.router, prefix="/api", tags=["Project Builder"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(enhanced_resume.router, prefix="/api", tags=["Enhanced Resume"])
 app.include_router(analyze_role.router, prefix="/api", tags=["RAG Analysis"])

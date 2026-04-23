@@ -16,12 +16,15 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // Clear any previous user's data BEFORE logging in
+      localStorage.clear();
+      
       const response = await axios.post('http://localhost:8000/api/auth/login', {
         email,
         password
       });
 
-      // Save user data to localStorage
+      // Save NEW user data to localStorage
       localStorage.setItem('token', 'dummy-token'); // Simple token for now
       localStorage.setItem('userEmail', response.data.user.email);
       localStorage.setItem('userName', response.data.user.name);
@@ -72,7 +75,12 @@ const Login = () => {
           </div>
 
           <div>
-            <label className="block text-gray-300 mb-2 font-medium">Password</label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-gray-300 font-medium">Password</label>
+              <Link to="/forgot-password" className="text-sm text-purple-400 hover:text-purple-300">
+                Forgot?
+              </Link>
+            </div>
             <input
               type="password"
               value={password}
