@@ -8,7 +8,11 @@ app = FastAPI(title="GenAI Career Copilot API - RAG Powered")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=[
+        "https://carrier-copilot-2-1vd3.onrender.com",  # Production frontend
+        "http://localhost:5173",  # Local development
+        "http://localhost:5174",  # Alternative local port
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
