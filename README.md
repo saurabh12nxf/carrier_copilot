@@ -200,14 +200,7 @@ Our RAG pipeline provides:
 
 ---
 
-## 📊 Success Metrics
 
-- ✅ **10,000+** students helped
-- ✅ **500+** career paths supported
-- ✅ **95%** user satisfaction rate
-- ✅ **3 minutes** average analysis time
-
----
 
 ## 🤝 Contributing
 
