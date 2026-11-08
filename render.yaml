@@ -12,6 +12,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.7
+      - key: PYTHONUNBUFFERED
+        value: "1"
       - key: GEMINI_API_KEY
         sync: false
       - key: OPENAI_API_KEY

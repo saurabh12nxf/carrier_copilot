@@ -21,46 +21,45 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
-try:
-    import chromadb
-    from chromadb.config import Settings
-except Exception as e:
-    logger.warning(f"ChromaDB module import failed: {e}. Will use in-memory vector store fallback.")
-    chromadb = None
-
 
 class VectorStore:
     def __init__(self, persist_directory: str = "./chroma_db"):
-        """Initialize ChromaDB client with resilient fallback"""
+        """Initialize ChromaDB client with resilient lazy loading"""
         self.persist_directory = persist_directory
         self.client = None
         self.collection = None
         self.memory_store = []  # Fallback in-memory list
+        self._initialized = False
 
-        if chromadb is not None:
-            try:
-                os.makedirs(persist_directory, exist_ok=True)
-                self.client = chromadb.PersistentClient(
-                    path=persist_directory,
-                    settings=Settings(
-                        anonymized_telemetry=False,
-                        allow_reset=True
-                    )
+    def _ensure_client(self):
+        """Lazy load ChromaDB on first use so startup is instantaneous"""
+        if self._initialized:
+            return
+        self._initialized = True
+        try:
+            import chromadb
+            from chromadb.config import Settings
+            os.makedirs(self.persist_directory, exist_ok=True)
+            self.client = chromadb.PersistentClient(
+                path=self.persist_directory,
+                settings=Settings(
+                    anonymized_telemetry=False,
+                    allow_reset=True
                 )
-                self.collection = self.client.get_or_create_collection(
-                    name="job_roles",
-                    metadata={"description": "Job descriptions and role requirements"}
-                )
-                logger.info(f"ChromaDB initialized. Collection size: {self.collection.count()}")
-            except Exception as e:
-                logger.warning(f"Failed to initialize ChromaDB ({e}). Using in-memory fallback store.")
-                self.client = None
-                self.collection = None
-        else:
-            logger.info("ChromaDB not available. Using in-memory fallback store.")
+            )
+            self.collection = self.client.get_or_create_collection(
+                name="job_roles",
+                metadata={"description": "Job descriptions and role requirements"}
+            )
+            logger.info(f"ChromaDB initialized. Collection size: {self.collection.count()}")
+        except Exception as e:
+            logger.warning(f"ChromaDB initialization deferred or failed ({e}). Using in-memory fallback store.")
+            self.client = None
+            self.collection = None
 
     def add_document(self, text: str, metadata: Dict):
         """Add a single document to vector store"""
+        self._ensure_client()
         doc_id = hashlib.md5(text.encode('utf-8')).hexdigest()
         if self.collection is not None:
             try:
@@ -86,6 +85,7 @@ class VectorStore:
                      skills: List[str], tools: List[str], level: str,
                      embedding: List[float]):
         """Add a job role to vector store"""
+        self._ensure_client()
         metadata = {
             "role_name": role_name,
             "skills": ",".join(skills),
@@ -119,6 +119,7 @@ class VectorStore:
 
     def add_batch(self, roles: List[Dict]):
         """Add multiple roles at once"""
+        self._ensure_client()
         if self.collection is not None:
             try:
                 ids = [r["id"] for r in roles]
@@ -141,6 +142,7 @@ class VectorStore:
 
     def search(self, query_embedding: List[float], top_k: int = 3) -> List[Dict]:
         """Search for similar job roles"""
+        self._ensure_client()
         if self.collection is not None:
             try:
                 results = self.collection.query(
@@ -193,6 +195,7 @@ class VectorStore:
 
     def get_collection_size(self) -> int:
         """Get number of documents in collection"""
+        self._ensure_client()
         if self.collection is not None:
             try:
                 return self.collection.count()
@@ -202,6 +205,7 @@ class VectorStore:
 
     def reset(self):
         """Clear all data (use with caution)"""
+        self._ensure_client()
         if self.client is not None:
             try:
                 self.client.reset()

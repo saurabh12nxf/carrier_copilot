@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional
-from services.rag_service import get_rag_service
 from services.enhanced_resume_service import get_user_skills
 from utils.parser import extract_text_from_file
 import io
@@ -43,6 +42,7 @@ async def analyze_role(request: AnalyzeRoleRequest):
         
         # Get RAG service
         try:
+            from services.rag_service import get_rag_service
             rag_service = get_rag_service()
             print(f"[RAG] RAG service initialized")
         except Exception as e:
