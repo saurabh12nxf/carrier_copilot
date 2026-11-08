@@ -1,214 +1,357 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { motion } from 'framer-motion';
-import { Upload, FileText, CheckCircle, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Upload,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  RefreshCw,
+  Plus,
+  X,
+  FileUp,
+  FileCheck,
+  ShieldCheck,
+} from 'lucide-react';
+import api, { formatApiError } from '../services/api';
 
 const ResumeAnalyzer = ({ darkMode, userEmail }) => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [newSkillInput, setNewSkillInput] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
-    // Load previous result from localStorage
     const savedResult = localStorage.getItem('resumeAnalysis');
     if (savedResult) {
       try {
         const parsed = JSON.parse(savedResult);
         setResult(parsed);
-        setShowUpload(false); // Hide upload if resume exists
-      } catch (e) {
-        console.error('Failed to parse saved result');
+        setShowUpload(false);
+      } catch {
         setShowUpload(true);
       }
     } else {
-      setShowUpload(true); // Show upload if no resume
+      setShowUpload(true);
     }
   }, []);
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-      if (validTypes.includes(selectedFile.type)) {
-        setFile(selectedFile);
-      } else {
-        alert('Please upload a PDF, DOCX, or TXT file');
-      }
+  const validateAndSetFile = (selectedFile) => {
+    setErrorMsg('');
+    if (!selectedFile) return;
+
+    const validExtensions = ['.pdf', '.docx', '.txt'];
+    const fileName = selectedFile.name.toLowerCase();
+    const isValidExtension = validExtensions.some((ext) => fileName.endsWith(ext));
+
+    if (!isValidExtension) {
+      setErrorMsg('Unsupported format. Please upload a PDF, DOCX, or TXT file.');
+      return;
     }
+
+    if (selectedFile.size > 15 * 1024 * 1024) {
+      setErrorMsg('File size exceeds the 15MB limit.');
+      return;
+    }
+
+    setFile(selectedFile);
+  };
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files?.[0];
+    validateAndSetFile(selectedFile);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const droppedFile = e.dataTransfer.files?.[0];
+    validateAndSetFile(droppedFile);
   };
 
   const handleAnalyze = async () => {
     if (!file) {
-      alert('Please select a resume file');
+      setErrorMsg('Please select a resume file before analyzing.');
       return;
     }
 
     setLoading(true);
+    setErrorMsg('');
+    const activeEmail = userEmail || localStorage.getItem('userEmail') || '';
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('email', userEmail);
+    if (activeEmail) {
+      formData.append('email', activeEmail);
+    }
 
     try {
-      const response = await axios.post('http://localhost:8000/api/resume-upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      
+      const response = await api.post('/api/resume-upload', formData);
       setResult(response.data);
-      
-      // Save result to localStorage
       localStorage.setItem('resumeAnalysis', JSON.stringify(response.data));
-      
-      setShowUpload(false); // Hide upload form after successful analysis
-      alert('🎉 Resume analyzed! Skills extracted using AI and stored in your profile.');
+      setShowUpload(false);
     } catch (error) {
-      alert('Failed to analyze resume. Make sure the backend is running.');
-      console.error(error);
+      const msg = formatApiError(error) || 'Failed to analyze resume. Please ensure the backend is running.';
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRemoveSkill = (skillToRemove) => {
+    if (!result) return;
+    const updatedSkills = (result.extracted_skills || []).filter((s) => s !== skillToRemove);
+    const updatedResult = {
+      ...result,
+      extracted_skills: updatedSkills,
+      total_skills: updatedSkills.length,
+    };
+    setResult(updatedResult);
+    localStorage.setItem('resumeAnalysis', JSON.stringify(updatedResult));
+  };
+
+  const handleAddSkill = (e) => {
+    e.preventDefault();
+    const trimmed = newSkillInput.trim();
+    if (!trimmed || !result) return;
+
+    const currentSkills = result.extracted_skills || [];
+    if (!currentSkills.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
+      const updatedSkills = [...currentSkills, trimmed];
+      const updatedResult = {
+        ...result,
+        extracted_skills: updatedSkills,
+        total_skills: updatedSkills.length,
+      };
+      setResult(updatedResult);
+      localStorage.setItem('resumeAnalysis', JSON.stringify(updatedResult));
+    }
+    setNewSkillInput('');
+  };
+
   const handleChangeResume = () => {
     setShowUpload(true);
     setFile(null);
+    setErrorMsg('');
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl"
-    >
-      <div className="mb-8">
-        <h2 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          📄 Resume Analyzer
-        </h2>
-        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          Step 1: Upload your resume to extract skills using AI
+    <div className="space-y-6 max-w-5xl">
+      {/* Page Header */}
+      <div className="pb-2 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50">
+            Step 1 of 3
+          </span>
+          <span className="text-xs text-zinc-400">•</span>
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Profile Ingestion</span>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mt-1">
+          Resume Analyzer
+        </h1>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+          Upload your resume in PDF, DOCX, or TXT format to automatically extract verified competencies.
         </p>
       </div>
 
-      <div className={`p-8 rounded-2xl ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg mb-6`}>
+      {errorMsg && (
+        <div className="flex items-center gap-2.5 p-3.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 text-xs font-medium">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Main Analysis & Upload Card */}
+      <div className="p-6 rounded-xl bg-white dark:bg-[#111113] border border-zinc-200 dark:border-zinc-800 shadow-sm">
         {result && !showUpload ? (
-          // Show existing resume with option to change
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <div className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${darkMode ? 'bg-green-900/20 border border-green-500/30' : 'bg-green-50 border border-green-200'}`}>
-              <CheckCircle className={`w-5 h-5 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
-              <p className={`text-sm font-medium ${darkMode ? 'text-green-400' : 'text-green-700'}`}>
-                Resume uploaded and analyzed successfully
-              </p>
-            </div>
-            <button
-              onClick={handleChangeResume}
-              className={`w-full py-3 rounded-xl font-semibold ${darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-900 hover:bg-gray-300'} transition-all duration-200 hover:scale-[1.02]`}
-            >
-              Change Resume
-            </button>
-          </motion.div>
-        ) : (
-          // Show upload form
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <div className="mb-6">
-              <label className={`block mb-3 font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Upload Resume (PDF, DOCX, or TXT) <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="file"
-                  onChange={handleFileChange}
-                  accept=".pdf,.docx,.txt"
-                  className={`w-full px-4 py-4 rounded-xl border ${darkMode ? 'border-gray-700 bg-gray-900/50 text-white' : 'border-gray-300 bg-white text-gray-900'} file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-indigo-500 file:to-purple-500 file:text-white hover:file:from-indigo-600 hover:file:to-purple-600 cursor-pointer transition-all`}
-                />
-                {file && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex items-center gap-2 mt-3 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}
-                  >
-                    <FileText className={`w-4 h-4 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
-                    <span>Selected: {file.name}</span>
-                  </motion.div>
-                )}
+          /* State A: Resume already parsed and verified */
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/40">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-600 text-white shrink-0">
+                  <FileCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                    Active Resume Profile
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    {result.total_skills || result.extracted_skills?.length || 0} skills extracted and active for gap modeling.
+                  </p>
+                </div>
               </div>
+
+              <button
+                onClick={handleChangeResume}
+                className="inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 transition-colors shrink-0 shadow-xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Upload Different Resume</span>
+              </button>
             </div>
 
+            {/* Extracted Skills Matrix */}
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    Verified Competencies
+                  </h4>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                    {result.extracted_skills?.length || 0}
+                  </span>
+                </div>
+                <span className="text-[11px] text-zinc-400">
+                  Click 'x' on any chip to remove, or add missing skills below
+                </span>
+              </div>
+
+              {/* Skill Tags */}
+              <div className="flex flex-wrap gap-2 p-4 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-zinc-800/80 min-h-[90px]">
+                {result.extracted_skills && result.extracted_skills.length > 0 ? (
+                  result.extracted_skills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-2xs group"
+                    >
+                      <span>{skill}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill(skill)}
+                        className="text-zinc-400 hover:text-red-500 transition-colors p-0.5 rounded"
+                        title={`Remove ${skill}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-xs text-zinc-400 italic">No skills extracted yet.</p>
+                )}
+              </div>
+
+              {/* Add Custom Skill Form */}
+              <form onSubmit={handleAddSkill} className="flex gap-2 mt-3">
+                <input
+                  type="text"
+                  value={newSkillInput}
+                  onChange={(e) => setNewSkillInput(e.target.value)}
+                  placeholder="Add missing skill (e.g. TypeScript, Docker, SQL)..."
+                  className="flex-1 px-3 py-2 text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!newSkillInput.trim()}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white/90 disabled:opacity-40 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Skill</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        ) : (
+          /* State B: Dropzone File Upload */
+          <div className="space-y-6">
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex flex-col items-center justify-center p-8 sm:p-12 rounded-xl border-2 border-dashed transition-all cursor-pointer text-center ${
+                isDragOver
+                  ? 'border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20'
+                  : file
+                  ? 'border-emerald-500/80 bg-emerald-50/20 dark:bg-emerald-950/10'
+                  : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-50/40 dark:bg-zinc-900/30'
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileChange}
+                accept=".pdf,.docx,.txt"
+                className="hidden"
+              />
+
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 mb-3 shadow-2xs">
+                {file ? <FileCheck className="w-6 h-6 text-emerald-600" /> : <Upload className="w-6 h-6 text-zinc-500" />}
+              </div>
+
+              {file ? (
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate max-w-sm">
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {(file.size / 1024).toFixed(1)} KB • Ready for analysis
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    Click to browse or drag and drop your resume
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Supports PDF, DOCX, and TXT files (up to 15MB)
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Privacy & Extraction Indicators */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60 text-xs text-zinc-500 dark:text-zinc-400">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>Text is securely parsed and processed locally for profile matching.</span>
+              </div>
+              {result && (
+                <button
+                  type="button"
+                  onClick={() => setShowUpload(false)}
+                  className="font-medium text-zinc-700 dark:text-zinc-300 hover:underline shrink-0"
+                >
+                  Cancel & Keep Existing
+                </button>
+              )}
+            </div>
+
+            {/* Action Trigger */}
             <button
+              type="button"
               onClick={handleAnalyze}
               disabled={loading || !file}
-              className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-4 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-500/25 transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Analyzing with AI...</span>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Parsing and Extracting Skills...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-5 h-5" />
-                  <span>Analyze Resume with AI</span>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Analyze Resume</span>
                 </>
               )}
             </button>
-          </motion.div>
+          </div>
         )}
       </div>
-
-      {result && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`p-8 rounded-2xl ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg`}
-        >
-          <h3 className={`text-2xl font-bold mb-6 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            <Sparkles className={`w-6 h-6 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-            <span>AI Analysis Results</span>
-          </h3>
-
-          <div className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${darkMode ? 'bg-green-900/20 border border-green-500/30' : 'bg-green-50 border border-green-200'}`}>
-            <CheckCircle className={`w-5 h-5 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
-            <p className={`font-semibold ${darkMode ? 'text-green-400' : 'text-green-700'}`}>
-              Success! Your skills have been extracted and saved to your profile.
-            </p>
-          </div>
-
-          <div className="mb-6">
-            <h4 className={`font-semibold mb-4 flex items-center gap-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-              <span>🎯</span>
-              <span>Extracted Skills ({result.total_skills})</span>
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {result.extracted_skills && result.extracted_skills.map((skill, index) => (
-                <motion.span
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`px-4 py-2 rounded-full text-sm font-medium ${darkMode ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30' : 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200'} transition-colors`}
-                >
-                  {skill}
-                </motion.span>
-              ))}
-            </div>
-          </div>
-
-          <div className={`p-4 rounded-xl ${darkMode ? 'bg-purple-900/20 border border-purple-500/30' : 'bg-purple-50 border border-purple-200'}`}>
-            <p className={`text-sm ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>
-              💡 <strong>Next Step:</strong> Go to "Skill Gap Analysis" or "Personalized Roadmap" to see how your skills match your target role!
-            </p>
-          </div>
-        </motion.div>
-      )}
-    </motion.div>
+    </div>
   );
 };
 

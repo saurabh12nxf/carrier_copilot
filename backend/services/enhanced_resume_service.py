@@ -166,18 +166,29 @@ def normalize_skills(skills: List[str]) -> List[str]:
 async def extract_text(file: UploadFile) -> str:
     """Extract text from uploaded file"""
     content = await file.read()
+    filename_lower = (file.filename or "").lower()
     
-    if file.filename.endswith('.pdf'):
-        pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-        return text
+    if filename_lower.endswith('.pdf'):
+        try:
+            pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
+            text = ""
+            for page in pdf_reader.pages:
+                extracted = page.extract_text()
+                if extracted:
+                    text += extracted + "\n"
+            if text.strip():
+                return text
+        except Exception as e:
+            print(f"[RESUME] PyPDF2 extraction error: {e}")
+        return content.decode('utf-8', errors='ignore')
     
-    elif file.filename.endswith('.docx'):
-        doc = docx.Document(io.BytesIO(content))
-        text = "\n".join([para.text for para in doc.paragraphs])
-        return text
+    elif filename_lower.endswith('.docx'):
+        try:
+            doc = docx.Document(io.BytesIO(content))
+            return "\n".join([para.text for para in doc.paragraphs if para.text])
+        except Exception as e:
+            print(f"[RESUME] Docx extraction error: {e}")
+            return content.decode('utf-8', errors='ignore')
     
     else:
         return content.decode('utf-8', errors='ignore')

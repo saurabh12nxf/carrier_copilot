@@ -30,10 +30,10 @@ class MultiLLM:
             api_key = os.getenv("GEMINI_API_KEY")
             if api_key and len(api_key) > 10:
                 genai.configure(api_key=api_key)
-                # Use gemini-pro which is stable and widely available
-                self.gemini_model = genai.GenerativeModel('gemini-pro')
+                # Use gemini-1.5-flash which is active, free and fast
+                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
                 self.providers.append("gemini")
-                logger.info("✅ Gemini configured")
+                logger.info("✅ Gemini configured with gemini-1.5-flash")
         except Exception as e:
             logger.warning(f"⚠️ Gemini initialization failed: {e}")
         
@@ -116,54 +116,75 @@ class MultiLLM:
         return ""
     
     def _generate_gemini(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        """Generate with Gemini"""
+        """Generate with Gemini using active models with fallback"""
         import google.generativeai as genai
-        
-        response = self.gemini_model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-            )
-        )
-        
-        # Handle different response formats
-        if hasattr(response, 'text') and response.text:
-            return response.text
-        elif hasattr(response, 'parts') and response.parts:
-            return response.parts[0].text
-        elif hasattr(response, 'candidates') and response.candidates:
-            return response.candidates[0].content.parts[0].text
-        
+
+        models_to_try = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro']
+        last_error = None
+
+        for model_name in models_to_try:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=temperature,
+                        max_output_tokens=max_tokens,
+                    )
+                )
+                if hasattr(response, 'text') and response.text:
+                    return response.text
+                elif hasattr(response, 'parts') and response.parts:
+                    return response.parts[0].text
+                elif hasattr(response, 'candidates') and response.candidates:
+                    return response.candidates[0].content.parts[0].text
+            except Exception as e:
+                last_error = e
+                logger.warning(f"⚠️ Gemini model {model_name} failed: {e}")
+                continue
+
+        if last_error:
+            raise last_error
         return ""
-    
+
     def _generate_openai(self, prompt: str, temperature: float, max_tokens: int) -> str:
         """Generate with OpenAI"""
         response = self.openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Use cheaper model
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are an expert AI career advisor."},
+                {"role": "system", "content": "You are an expert AI technical interviewer and career advisor."},
                 {"role": "user", "content": prompt}
             ],
             temperature=temperature,
             max_tokens=max_tokens
         )
-        
         return response.choices[0].message.content
-    
+
     def _generate_groq(self, prompt: str, temperature: float, max_tokens: int) -> str:
         """Generate with Groq (very fast!)"""
-        response = self.groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # Fast and good quality
-            messages=[
-                {"role": "system", "content": "You are an expert AI career advisor."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
-        
-        return response.choices[0].message.content
+        models_to_try = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+        last_error = None
+
+        for model_name in models_to_try:
+            try:
+                response = self.groq_client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": "You are an expert AI technical interviewer and career advisor."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                last_error = e
+                logger.warning(f"⚠️ Groq model {model_name} failed: {e}")
+                continue
+
+        if last_error:
+            raise last_error
+        return ""
     
     def get_status(self) -> Dict:
         """Get status of all providers"""

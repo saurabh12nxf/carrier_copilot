@@ -1,9 +1,18 @@
+import os
+import sys
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+# Ensure backend root is in sys.path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 from models.user import Base
 
-# SQLite database
-DATABASE_URL = "sqlite:///./career_copilot.db"
+# SQLite database path anchored to the backend folder
+DB_PATH = os.path.join(BASE_DIR, "career_copilot.db")
+DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 # Create engine
 engine = create_engine(

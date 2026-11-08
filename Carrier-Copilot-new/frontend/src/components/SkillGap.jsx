@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { toast } from 'react-toastify';
+import {
+  Target,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  TrendingUp,
+  Clock,
+  Layers,
+  ChevronDown,
+  Upload,
+  ArrowRight,
+  ShieldCheck,
+} from 'lucide-react';
+import api, { formatApiError } from '../services/api';
 
 const SkillGap = ({ darkMode, userEmail }) => {
   const [targetRole, setTargetRole] = useState('');
@@ -9,347 +22,365 @@ const SkillGap = ({ darkMode, userEmail }) => {
   const [useCustomJD, setUseCustomJD] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const commonRoles = [
+    'Full Stack Engineer',
+    'Frontend Specialist',
+    'Backend Engineer',
+    'AI / Machine Learning Engineer',
+    'DevOps & Cloud Architect',
+    'Data Scientist',
+  ];
 
   useEffect(() => {
-    // Load previous result from localStorage
     const savedResult = localStorage.getItem('skillGapAnalysis');
     if (savedResult) {
       try {
-        setResult(JSON.parse(savedResult));
-      } catch (e) {
-        console.error('Failed to parse saved result');
+        const parsed = JSON.parse(savedResult);
+        setResult(parsed);
+        if (parsed.target_role) setTargetRole(parsed.target_role);
+      } catch {
+        // Ignore parse error
       }
     }
   }, []);
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       setJobDescriptionFile(file);
-      setJobDescription(''); // Clear text input if file is selected
+      setJobDescription('');
     }
   };
 
   const handleAnalyze = async () => {
     const email = userEmail || localStorage.getItem('userEmail');
-    
+    setErrorMsg('');
+
     if (!email) {
-      alert('Please upload your resume first in the Resume Analyzer tab');
+      setErrorMsg('Please log in and ensure your resume is uploaded before analyzing.');
       return;
     }
-    
+
     if (!targetRole.trim()) {
-      alert('Please enter a target role');
+      setErrorMsg('Please specify or select a target career role.');
       return;
     }
 
     if (useCustomJD && !jobDescription.trim() && !jobDescriptionFile) {
-      alert('Please provide a job description (text or file)');
+      setErrorMsg('Please provide a job description (either paste text or attach a file).');
       return;
     }
 
     setLoading(true);
     try {
       let response;
-      
       if (useCustomJD && jobDescriptionFile) {
-        // Upload file
         const formData = new FormData();
         formData.append('email', email);
-        formData.append('role', targetRole);
+        formData.append('role', targetRole.trim());
         formData.append('job_description_file', jobDescriptionFile);
-        
-        response = await axios.post('http://localhost:8000/api/analyze-role-with-file', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+
+        response = await api.post('/api/analyze-role-with-file', formData);
       } else {
-        // Use text or no JD
-        response = await axios.post('http://localhost:8000/api/analyze-role', {
-          email: email,
-          role: targetRole,
-          job_description: useCustomJD ? jobDescription : null
+        response = await api.post('/api/analyze-role', {
+          email,
+          role: targetRole.trim(),
+          job_description: useCustomJD ? jobDescription.trim() : null,
         });
       }
-      
+
       setResult(response.data);
-      
-      // Save result to localStorage
       localStorage.setItem('skillGapAnalysis', JSON.stringify(response.data));
-      
-      alert('🎯 AI analysis complete!');
     } catch (error) {
       if (error.response?.status === 404) {
-        alert('No resume found. Please upload your resume first!');
+        setErrorMsg('No resume found on file. Please upload your resume in the Resume Analyzer first.');
       } else {
-        alert('Failed to analyze. Make sure the backend is running.');
+        setErrorMsg(formatApiError(error) || 'Failed to complete analysis. Please verify your connection.');
       }
-      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
+  const matchScore = result?.skill_gap?.completion_percentage || 0;
+  const matchedSkills = result?.skill_gap?.matched_skills || [];
+  const missingSkills = result?.skill_gap?.missing_skills || [];
+
   return (
-    <div className="max-w-4xl">
-      <div className="mb-6">
-        <h2 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          🎯 AI-Powered Skill Gap Analysis
-        </h2>
-        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          Step 2: Compare your skills with your target role using AI
+    <div className="space-y-6 max-w-5xl">
+      {/* Page Header */}
+      <div className="pb-2 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50">
+            Step 2 of 3
+          </span>
+          <span className="text-xs text-zinc-400">•</span>
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Market Benchmarking</span>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mt-1">
+          Skill Gap Analysis
+        </h1>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+          Benchmark your verified competencies against industry expectations for your target position.
         </p>
       </div>
 
-      <div className={`p-6 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg mb-6`}>
-        {userEmail && (
-          <div className={`mb-4 p-3 rounded-lg ${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
-            <p className={`text-sm ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>
-              📧 Analyzing for: <strong>{userEmail}</strong>
-            </p>
-          </div>
-        )}
+      {errorMsg && (
+        <div className="flex items-center gap-2.5 p-3.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 text-xs font-medium">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
 
-        <div className="mb-4">
-          <label className={`block mb-2 font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            Target Role <span className="text-red-500">*</span>
+      {/* Target Role Input & Configuration Card */}
+      <div className="p-6 rounded-xl bg-white dark:bg-[#111113] border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-5">
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 mb-2">
+            Target Job Title
           </label>
           <input
             type="text"
             value={targetRole}
             onChange={(e) => setTargetRole(e.target.value)}
-            placeholder="e.g., Frontend Developer, Data Scientist, Backend Engineer"
-            className={`w-full px-4 py-3 rounded-lg border ${
-              darkMode 
-                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                : 'bg-white border-gray-300 text-gray-900'
-            } focus:ring-2 focus:ring-primary focus:border-transparent`}
+            placeholder="e.g. Senior Full Stack Engineer, AI Research Scientist..."
+            className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
-        </div>
 
-        {/* Toggle for custom JD */}
-        <div className="mb-4">
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useCustomJD}
-              onChange={(e) => setUseCustomJD(e.target.checked)}
-              className="mr-2 w-4 h-4"
-            />
-            <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              📄 I have a specific job description
-            </span>
-          </label>
-        </div>
-
-        {/* Job Description Input (conditional) */}
-        {useCustomJD && (
-          <div className="mb-4 space-y-3">
-            <div>
-              <label className={`block mb-2 font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Option 1: Paste Job Description
-              </label>
-              <textarea
-                value={jobDescription}
-                onChange={(e) => {
-                  setJobDescription(e.target.value);
-                  setJobDescriptionFile(null); // Clear file if text is entered
-                }}
-                placeholder="Paste the job description here..."
-                rows={6}
-                className={`w-full px-4 py-3 rounded-lg border ${
-                  darkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                    : 'bg-white border-gray-300 text-gray-900'
-                } focus:ring-2 focus:ring-primary focus:border-transparent`}
-              />
-            </div>
-
-            <div className={`text-center text-sm ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-              OR
-            </div>
-
-            <div>
-              <label className={`block mb-2 font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Option 2: Upload Job Description File (PDF, DOCX, TXT)
-              </label>
-              <input
-                type="file"
-                onChange={handleFileChange}
-                accept=".pdf,.docx,.txt"
-                className={`w-full px-4 py-3 rounded-lg border ${
-                  darkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'bg-white border-gray-300 text-gray-900'
-                } file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-secondary cursor-pointer`}
-              />
-              {jobDescriptionFile && (
-                <p className={`mt-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  ✓ Selected: {jobDescriptionFile.name}
-                </p>
-              )}
-            </div>
+          {/* Quick Select Preset Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+            <span className="text-[11px] text-zinc-400 mr-1">Popular roles:</span>
+            {commonRoles.map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => setTargetRole(role)}
+                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                  targetRole === role
+                    ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50 font-medium'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                }`}
+              >
+                {role}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
+        {/* Custom Job Description Toggle */}
+        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
+          <button
+            type="button"
+            onClick={() => setUseCustomJD(!useCustomJD)}
+            className="flex items-center gap-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          >
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${useCustomJD ? 'rotate-180' : ''}`} />
+            <span>Targeting a specific company's Job Description? (Optional)</span>
+          </button>
+
+          {useCustomJD && (
+            <div className="mt-3 space-y-3 p-4 rounded-lg bg-zinc-50/60 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-zinc-800/60">
+              <div>
+                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5">
+                  Paste Job Description Text
+                </label>
+                <textarea
+                  value={jobDescription}
+                  onChange={(e) => {
+                    setJobDescription(e.target.value);
+                    if (e.target.value) setJobDescriptionFile(null);
+                  }}
+                  rows={4}
+                  placeholder="Paste the job requirements, responsibilities, and qualifications..."
+                  className="w-full p-3 text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-zinc-400 font-medium">or</span>
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 text-zinc-700 dark:text-zinc-300 cursor-pointer shadow-2xs">
+                  <Upload className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Attach JD Document</span>
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    accept=".pdf,.docx,.txt"
+                    className="hidden"
+                  />
+                </label>
+                {jobDescriptionFile && (
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 truncate max-w-xs font-medium">
+                    Attached: {jobDescriptionFile.name}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Trigger Button */}
         <button
+          type="button"
           onClick={handleAnalyze}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-primary to-secondary text-white py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+          disabled={loading || !targetRole.trim()}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
         >
           {loading ? (
             <>
-              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>AI is analyzing...</span>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Analyzing Skill Gaps against Industry Standards...</span>
             </>
           ) : (
             <>
-              <span>🤖</span>
-              <span>{useCustomJD ? 'Analyze with Custom JD' : 'Analyze with AI'}</span>
+              <Target className="w-4 h-4" />
+              <span>Run Skill Gap Benchmark</span>
             </>
           )}
         </button>
       </div>
 
+      {/* Analysis Results */}
       {result && (
         <div className="space-y-6">
-          {/* AI Insights */}
-          {result.ai_insights && (
-            <div className={`p-6 rounded-xl ${darkMode ? 'bg-gray-800 border border-purple-500/50' : 'bg-white border border-purple-200'} shadow-lg`}>
-              <h3 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                <span>🤖</span>
-                <span>AI Insights</span>
-              </h3>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <p className={`text-sm font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    <span>💪</span>
-                    <span>Your Strengths:</span>
+          {/* Match Score & Overview Card */}
+          <div className="p-6 rounded-xl bg-white dark:bg-[#111113] border border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-800/80">
+              <div>
+                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                  Benchmark Analysis
+                </span>
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 mt-0.5">
+                  Readiness for {result.target_role}
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <span className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                    {matchScore}%
+                  </span>
+                  <p className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
+                    Role Match Rate
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {result.ai_insights.strengths.map((s, i) => (
-                      <span key={i} className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm font-medium shadow-sm">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className={`text-sm font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    <span>🎯</span>
-                    <span>Focus Areas:</span>
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {result.ai_insights.focus_areas.map((s, i) => (
-                      <span key={i} className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-medium shadow-sm">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
                 </div>
               </div>
-              <div className={`mt-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  ⏱️ <strong>Estimated Time:</strong> {result.ai_insights.estimated_time}
-                </p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full mt-4 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  matchScore >= 70
+                    ? 'bg-emerald-600'
+                    : matchScore >= 45
+                    ? 'bg-amber-500'
+                    : 'bg-indigo-600'
+                }`}
+                style={{ width: `${Math.min(100, matchScore)}%` }}
+              />
+            </div>
+
+            {/* Dual Grid: Matched Skills vs Missing Skills */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              {/* Matched Skills */}
+              <div className="p-4 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-zinc-800/60">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
+                      Matched Competencies
+                    </h4>
+                  </div>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
+                    {matchedSkills.length}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 min-h-[60px]">
+                  {matchedSkills.length > 0 ? (
+                    matchedSkills.map((skill, i) => (
+                      <span
+                        key={i}
+                        className="text-xs px-2.5 py-1 rounded-md font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200/70 dark:border-emerald-800/40"
+                      >
+                        {skill}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-xs text-zinc-400 italic">No direct matches found yet.</p>
+                  )}
+                </div>
               </div>
-              {result.ai_insights.recommendations && result.ai_insights.recommendations.length > 0 && (
-                <div className="mt-4">
-                  <p className={`text-sm font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    <span>💡</span>
-                    <span>AI Recommendations:</span>
-                  </p>
+
+              {/* Missing Priority Gaps */}
+              <div className="p-4 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-zinc-800/60">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
+                      Required Skill Gaps
+                    </h4>
+                  </div>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">
+                    {missingSkills.length}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 min-h-[60px]">
+                  {missingSkills.length > 0 ? (
+                    missingSkills.map((gap, i) => (
+                      <span
+                        key={i}
+                        className="text-xs px-2.5 py-1 rounded-md font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-200/70 dark:border-amber-800/40"
+                      >
+                        {gap}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-xs text-zinc-400 italic">
+                      Zero gaps detected! You meet 100% of benchmark requirements.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* AI Insights and Recommendations */}
+            {result.ai_insights && (
+              <div className="mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800/80 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-500" />
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
+                    Strategic Focus & Recommendations
+                  </h4>
+                </div>
+
+                {result.ai_insights.estimated_time && (
+                  <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                    <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Estimated transition timeline:</span>
+                    <strong className="text-zinc-800 dark:text-zinc-200">
+                      {result.ai_insights.estimated_time}
+                    </strong>
+                  </div>
+                )}
+
+                {result.ai_insights.recommendations && result.ai_insights.recommendations.length > 0 && (
                   <ul className="space-y-2">
                     {result.ai_insights.recommendations.map((rec, i) => (
-                      <li key={i} className={`flex items-start gap-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        <span className="text-primary mt-0.5">•</span>
-                        <span>{rec}</span>
+                      <li
+                        key={i}
+                        className="flex items-start gap-2.5 text-xs text-zinc-600 dark:text-zinc-300"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0" />
+                        <span className="leading-relaxed">{rec}</span>
                       </li>
                     ))}
                   </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Custom JD Badge */}
-          {result.custom_jd && (
-            <div className={`p-4 rounded-lg ${darkMode ? 'bg-green-900/20 border border-green-500' : 'bg-green-50 border border-green-200'}`}>
-              <p className={`text-sm ${darkMode ? 'text-green-300' : 'text-green-700'}`}>
-                ✓ <strong>Custom Job Description:</strong> Analysis based on your specific job posting
-              </p>
-            </div>
-          )}
-
-          {/* Skill Gap Analysis */}
-          <div className={`p-6 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg`}>
-            <h3 className={`text-2xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              📊 Skill Gap Analysis for {result.target_role}
-            </h3>
-
-            <div className="mb-6">
-              <div className={`text-sm font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Completion Progress
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-6 dark:bg-gray-700">
-                <div
-                  className={`h-6 rounded-full transition-all duration-500 flex items-center justify-center text-white text-sm font-bold ${
-                    result.skill_gap.completion_percentage >= 70 ? 'bg-green-500' : 
-                    result.skill_gap.completion_percentage >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${result.skill_gap.completion_percentage}%` }}
-                >
-                  {result.skill_gap.completion_percentage}%
-                </div>
-              </div>
-              <p className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                Role Level: <strong>{result.skill_gap.role_level}</strong>
-              </p>
-            </div>
-
-            {result.skill_gap.matching_skills && result.skill_gap.matching_skills.length > 0 && (
-              <div className="mb-4">
-                <h4 className={`font-semibold mb-2 ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
-                  ✓ Skills You Have ({result.skill_gap.matching_skills.length})
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {result.skill_gap.matching_skills.map((skill, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full text-sm font-medium"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
+                )}
               </div>
             )}
-
-            {result.skill_gap.missing_skills && result.skill_gap.missing_skills.length > 0 && (
-              <div className="mb-4">
-                <h4 className={`font-semibold mb-2 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                  ✗ Skills to Learn ({result.skill_gap.missing_skills.length})
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {result.skill_gap.missing_skills.map((skill, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full text-sm font-medium"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className={`p-4 rounded-lg ${darkMode ? 'bg-blue-900/20 border border-blue-500' : 'bg-blue-50 border border-blue-200'}`}>
-            <p className={`text-sm ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>
-              💡 <strong>Next Step:</strong> Check out the "Personalized Roadmap" tab to get an AI-generated learning plan!
-            </p>
           </div>
         </div>
       )}

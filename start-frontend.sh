@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Starting GenAI Career Copilot Frontend..."
+echo "Starting Career Copilot Frontend..."
 cd Carrier-Copilot-new/frontend
 if [ ! -d "node_modules" ]; then
     echo "Installing dependencies..."

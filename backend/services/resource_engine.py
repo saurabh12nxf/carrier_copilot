@@ -467,16 +467,17 @@ class ResourceEngine:
             ]
         }
     
-    def get_resources_for_topic(self, topic: str, missing_skills: List[str]) -> Dict:
+    def get_resources_for_topic(self, topic: str, missing_skills: List[str]) -> List[Dict]:
         """
         Get verified resources for a specific topic/week focus
+        Returns a flat list of resources for frontend display
         
         Args:
             topic: The focus topic for the week (e.g., "HTML & CSS Basics")
             missing_skills: List of missing skills to find relevant resources
         
         Returns:
-            Dict with documentation, videos, and practice resources
+            List of resource dicts with title, url, type
         """
         # Extract main skill from topic
         topic_lower = topic.lower()
@@ -502,29 +503,64 @@ class ResourceEngine:
         # Get resources for matched skill
         if matched_skill:
             normalized = self._normalize_skill(matched_skill)
-            return self.get_resources(normalized, "beginner")
+            full_resources = self.get_resources(normalized, "beginner")
+            
+            # Flatten into list format for frontend
+            resources_list = []
+            
+            # Add documentation
+            if full_resources.get("documentation"):
+                doc = full_resources["documentation"]
+                resources_list.append({
+                    "title": doc["title"],
+                    "url": doc["url"],
+                    "type": "documentation"
+                })
+            
+            # Add YouTube courses (top 2)
+            for youtube in full_resources.get("youtube", [])[:2]:
+                resources_list.append({
+                    "title": youtube["title"],
+                    "url": youtube["search_url"],
+                    "type": "youtube"
+                })
+            
+            # Add GitHub search
+            if full_resources.get("github_search"):
+                resources_list.append({
+                    "title": f"GitHub {matched_skill.title()} Projects",
+                    "url": full_resources["github_search"],
+                    "type": "github"
+                })
+            
+            # Add practice platforms (top 2)
+            for platform in full_resources.get("practice", [])[:2]:
+                resources_list.append({
+                    "title": platform["name"],
+                    "url": platform["url"],
+                    "type": "practice"
+                })
+            
+            return resources_list
         
         # Fallback: generic resources
-        return {
-            "skill": topic,
-            "level": "beginner",
-            "documentation": {
+        return [
+            {
                 "title": f"{topic} Documentation",
                 "url": f"https://www.google.com/search?q={topic.replace(' ', '+')}+documentation",
-                "type": "search"
+                "type": "documentation"
             },
-            "youtube": [
-                {
-                    "title": f"{topic} Tutorial",
-                    "search_url": f"https://www.youtube.com/results?search_query={topic.replace(' ', '+')}+tutorial",
-                    "platform": "YouTube"
-                }
-            ],
-            "projects": [],
-            "courses": [],
-            "github_search": f"https://github.com/search?q={topic.replace(' ', '+')}",
-            "practice": []
-        }
+            {
+                "title": f"{topic} Tutorial on YouTube",
+                "url": f"https://www.youtube.com/results?search_query={topic.replace(' ', '+')}+tutorial",
+                "type": "youtube"
+            },
+            {
+                "title": f"{topic} Projects on GitHub",
+                "url": f"https://github.com/search?q={topic.replace(' ', '+')}",
+                "type": "github"
+            }
+        ]
 
 
 # Singleton
