@@ -7,6 +7,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
+# NumPy 2.x backward compatibility shim for older libraries (e.g. chromadb 0.4.x)
+try:
+    import numpy as np
+    if not hasattr(np, 'float_'):
+        np.float_ = np.float64
+    if not hasattr(np, 'int_'):
+        np.int_ = int
+    if not hasattr(np, 'uint_'):
+        np.uint_ = np.uint
+except Exception:
+    pass
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
